@@ -30,8 +30,7 @@ def add_user():
 add_user()
 
 
-
-@app.post("/products")
+@app.post("/products", response_model=ProductResponse)
 def create_product(prod: ProductRequest):
     # Store in the database
     dbprod = Product(
@@ -44,4 +43,10 @@ def create_product(prod: ProductRequest):
 
     session.add(dbprod)
     session.commit()
-    return {"dbprod":dbprod}
+    return dbprod
+
+@app.get("/products", response_model=list[ProductResponse])
+def get_products():
+    query = select(Product)
+    products = session.scalars(query)
+    return products

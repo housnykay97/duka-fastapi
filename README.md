@@ -5,3 +5,5 @@
 
 -Define a ProductRequest class with properties matching request data: id, name, buying_price, selling_price, stock_quantity
 
+pydantic changes an object to json
+
