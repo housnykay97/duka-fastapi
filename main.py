@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 from data_schemas import ProductRequest, ProductResponse
-from models import Base, Product
+from models import Base, Product, User
 from sqlalchemy import create_engine, select
 
 
@@ -20,6 +20,16 @@ session = Session(engine)
 @app.get("/")
 def home():
     return {"Duka FastAPI Version": "1.0"}
+
+
+def add_user():
+    user = User(full_name="Hussna",email="husna1@gmail.com",phone_number="254700539097",password="1234")
+    session.add(user)
+    session.commit()
+    
+add_user()
+
+
 
 @app.post("/products")
 def create_product(prod: ProductRequest):
