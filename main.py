@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from data_schemas import ProductRequest, ProductResponse, PurchaseRequest, PurchaseResponse, SaleRequest, SaleResponse, SalesDetailRequest, SalesDetailResponse, PaymentRequest, PaymentResponse
 from models import Base, Product, User, Purchase, Sale, SalesDetail, Payment
@@ -26,7 +26,7 @@ def add_user():
     session.add(user)
     session.commit()
 
-add_user()    
+#add_user()    
 
 # PRODUCTS
 @app.post("/products", response_model=ProductResponse)
@@ -51,6 +51,39 @@ def get_products():
     products = session.scalars(query)
     return products
 
+@app.get("/products/{product_id}", response_model=ProductResponse)
+def get_single_product(product_id):
+    query = select(Product).where(Product.id == product_id)
+    product = session.scalars(query).first()
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+    return product
+
+
+@app.put("/products/{product_id}", response_model=ProductResponse)
+def update_product(product_id : int, prod : ProductRequest ):
+    query = select(Product).where(Product.id == product_id)
+    product = session.scalars(query).first()
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    product.product_name = prod.product_name
+    product.buying_price = prod.buying_price
+    product.selling_price = prod.selling_price
+    product.stock_quantity = prod.stock_quantity
+
+    session.commit()
+    return product
+
+
+
+# End Product Routes
 
 # PURCHASE
 @app.post("/purchases", response_model=PurchaseResponse)
@@ -71,6 +104,7 @@ def get_purchases():
     purchases = session.scalars(query)
     return purchases
 
+# End Purchase Routes
 
 #SALE
 @app.post("/sales", response_model=SaleResponse)
@@ -89,6 +123,7 @@ def get_sale():
     sales = session.scalars(query)
     return sales
 
+# End Sale Routes
 
 # SALESDETAIL
 @app.post("/salesdetails", response_model=SalesDetailResponse)
@@ -109,6 +144,7 @@ def get_sales_details():
     detail = session.scalars(query)
     return detail
 
+# End SalesDetail Routes
 
 # PAYMENT
 @app.post("/payments", response_model=PaymentResponse)
@@ -133,4 +169,5 @@ def get_payments():
     query = select(Payment)
     payments = session.scalars(query)
     return payments
-    
+
+# End Payments Routes   
