@@ -4,6 +4,9 @@ from data_schemas import ProductRequest, ProductResponse, PurchaseRequest, Purch
 from models import Base, Product, User, Purchase, Sale, SalesDetail, Payment
 from sqlalchemy import create_engine, select
 
+from myjwt import create_access_token, verify_password, get_current_user
+
+
 app = FastAPI()
 
 # create a connection to the database using sqlalchemy engine
