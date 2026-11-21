@@ -1,11 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from data_schemas import ProductRequest, ProductResponse, PurchaseRequest, PurchaseResponse, SaleRequest, SaleResponse, SalesDetailRequest, SalesDetailResponse, PaymentRequest, PaymentResponse
+from data_schemas import ProductRequest, ProductResponse, PurchaseRequest, PurchaseResponse, SaleRequest, SaleResponse, SalesDetailRequest, SalesDetailResponse, PaymentRequest, PaymentResponse, LoginResponse, LoginRequest, RegisterRequest, RegisterResponse
 from models import Base, Product, User, Purchase, Sale, SalesDetail, Payment
 from sqlalchemy import create_engine, select
 
-from myjwt import create_access_token, verify_password, get_current_user
-
+from myjwt import create_access_token, verify_password, get_current_user, get_password_hash
 
 app = FastAPI()
 
@@ -24,17 +23,61 @@ def home():
     return {"Duka FastAPI Version": "1.0"}
 
 
-def add_user():
-    user = User(full_name="Hussna",email="husna1@gmail.com",phone_number="254700539097",password="1234")
-    session.add(user)
+# Authentication routes
+@app.post("login", response_model=LoginResponse) 
+def login(user:LoginRequest):
+
+    credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    query = select(User).where(User.email == user.email)
+    db_user = session.scalars(query).first()
+
+    if not db_user:
+        raise credentials_exception
+    
+    if not verify_password(user.password, db_user.password):
+        raise credentials_exception
+    
+    db_user.token=create_access_token({"sub" : "db_user.email"})
+    return db_user
+
+@app.post("register", response_model=RegisterResponse) 
+def register(user:RegisterRequest):
+
+    credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    query = select(User).where(User.email == user.email)
+    db_user = session.scalars(query).first()
+
+    if db_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+
+    db_user = User(full_name = user.full_name,
+                email = user.email,
+                phone_number = user.phone_number,
+                password = get_password_hash(user.password)
+                )
+    session.add(db_user)
     session.commit()
 
-#add_user()    
+    db_user.token=create_access_token({"sub" : "db_user.email"})
+    return db_user
 
 
 # PRODUCTS ROUTES
 @app.post("/products", response_model=ProductResponse)
-def create_product(prod: ProductRequest):
+def create_product(prod: ProductRequest, current_user: str=Depends(get_current_user)):
     
     # Store in the database
     dbprod = Product(
@@ -51,7 +94,8 @@ def create_product(prod: ProductRequest):
 
 
 @app.get("/products", response_model=list[ProductResponse])
-def get_products():
+def get_products(current_user: str = Depends(get_current_user)):
+    print("--------------user is ------------", current_user)
     query = select(Product)
     return session.scalars(query).all
 
@@ -92,7 +136,7 @@ def update_product(product_id : int, prod : ProductRequest ):
 
 # PURCHASE ROUTES
 @app.post("/purchases", response_model=PurchaseResponse)
-def create_purchase(pur: PurchaseRequest):
+def create_purchase(pur: PurchaseRequest, current_user: str=Depends(get_current_user)):
     dbpurchase = Purchase(
         user_id = pur.user_id,
         product_id = pur.product_id,
@@ -105,7 +149,7 @@ def create_purchase(pur: PurchaseRequest):
 
 
 @app.get("/purchases", response_model=list[PurchaseResponse])
-def get_purchases():
+def get_purchases(current_user: str=Depends(get_current_user)):
     query = select(Purchase)
     purchases = session.scalars(query)
     return purchases
@@ -145,7 +189,7 @@ def update_purchase(purchase_id : int, pur : PurchaseRequest):
 
 #SALE ROUTES
 @app.post("/sales", response_model=SaleResponse)
-def create_sale(sl: SaleRequest):
+def create_sale(sl: SaleRequest, current_user: str=Depends(get_current_user)):
     dbsale = Sale(
         user_id = sl.user_id
     )
@@ -156,7 +200,7 @@ def create_sale(sl: SaleRequest):
 
 
 @app.get("/sales", response_model=list[SaleResponse])
-def get_sales():
+def get_sales(current_user: str=Depends(get_current_user)):
     query = select(Sale)
     sales = session.scalars(query)
     return sales
@@ -193,7 +237,7 @@ def update_sale(sale_id : int, sl : SaleRequest):
 
 # SALESDETAIL ROUTES
 @app.post("/salesdetails", response_model=SalesDetailResponse)
-def create_sales_detail(sd: SalesDetailRequest):
+def create_sales_detail(sd: SalesDetailRequest, current_user: str=Depends(get_current_user)):
     s_detail = SalesDetail(
         product_id = sd.product_id,
         sale_id = sd.sale_id,
@@ -206,7 +250,7 @@ def create_sales_detail(sd: SalesDetailRequest):
 
 
 @app.get("/salesdetails", response_model=list[SalesDetailResponse])
-def get_sales_details():
+def get_sales_details(current_user: str=Depends(get_current_user)):
     query = select(SalesDetail)
     detail = session.scalars(query)
     return detail
@@ -245,7 +289,7 @@ def update_sales_detail(detail_id: int, sd: SalesDetailRequest):
 
 # PAYMENT ROUTES
 @app.post("/payments", response_model=PaymentResponse)
-def create_payments(pay: PaymentRequest):
+def create_payments(pay: PaymentRequest, current_user: str=Depends(get_current_user)):
     dbpayment = Payment(
         sale_id = pay.sale_id,
         amount_paid = pay.amount_paid,
@@ -263,7 +307,7 @@ def create_payments(pay: PaymentRequest):
 
 
 @app.get("/payments", response_model=list[PaymentResponse])
-def get_payments():
+def get_payments(current_user: str=Depends(get_current_user)):
     query = select(Payment)
     payments = session.scalars(query)
     return payments
