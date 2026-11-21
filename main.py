@@ -24,7 +24,7 @@ def home():
 
 
 # Authentication routes
-@app.post("login", response_model=LoginResponse) 
+@app.post("/login", response_model=LoginResponse) 
 def login(user:LoginRequest):
 
     credentials_exception = HTTPException(
@@ -42,10 +42,10 @@ def login(user:LoginRequest):
     if not verify_password(user.password, db_user.password):
         raise credentials_exception
     
-    db_user.token=create_access_token({"sub" : "db_user.email"})
+    db_user.token=create_access_token({"sub" : db_user.email})
     return db_user
 
-@app.post("register", response_model=RegisterResponse) 
+@app.post("/register", response_model=RegisterResponse) 
 def register(user:RegisterRequest):
 
     credentials_exception = HTTPException(
@@ -70,8 +70,9 @@ def register(user:RegisterRequest):
                 )
     session.add(db_user)
     session.commit()
+    session.refresh(db_user)
 
-    db_user.token=create_access_token({"sub" : "db_user.email"})
+    db_user.token=create_access_token({"sub" : db_user.email})
     return db_user
 
 
@@ -97,7 +98,7 @@ def create_product(prod: ProductRequest, current_user: str=Depends(get_current_u
 def get_products(current_user: str = Depends(get_current_user)):
     print("--------------user is ------------", current_user)
     query = select(Product)
-    return session.scalars(query).all
+    return session.scalars(query).all()
 
 
 @app.get("/products/{product_id}", response_model=ProductResponse)
@@ -151,11 +152,11 @@ def create_purchase(pur: PurchaseRequest, current_user: str=Depends(get_current_
 @app.get("/purchases", response_model=list[PurchaseResponse])
 def get_purchases(current_user: str=Depends(get_current_user)):
     query = select(Purchase)
-    purchases = session.scalars(query)
+    purchases = session.scalars(query).all()
     return purchases
 
 
-@app.get("/purchases{purchase_id}", response_model=PurchaseResponse)
+@app.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
 def get_single_purchase(purchase_id):
     query = select(Purchase).where(Purchase.id == purchase_id)
     purchase = session.scalars(query).first()
@@ -180,7 +181,7 @@ def update_purchase(purchase_id : int, pur : PurchaseRequest):
     purchase.product_id = pur.product_id
     purchase.total_cost = pur.total_cost
 
-    session.ommit()
+    session.commit()
     session.refresh(purchase)
     return purchase
 
@@ -202,7 +203,7 @@ def create_sale(sl: SaleRequest, current_user: str=Depends(get_current_user)):
 @app.get("/sales", response_model=list[SaleResponse])
 def get_sales(current_user: str=Depends(get_current_user)):
     query = select(Sale)
-    sales = session.scalars(query)
+    sales = session.scalars(query).all()
     return sales
 
 
@@ -309,7 +310,7 @@ def create_payments(pay: PaymentRequest, current_user: str=Depends(get_current_u
 @app.get("/payments", response_model=list[PaymentResponse])
 def get_payments(current_user: str=Depends(get_current_user)):
     query = select(Payment)
-    payments = session.scalars(query)
+    payments = session.scalars(query).all()
     return payments
 
 
@@ -325,7 +326,7 @@ def get_single_payment(payment_id):
     return payment
 
 
-@app.get("/payments/{payment_id}", response_model=PaymentResponse)
+@app.put("/payments/{payment_id}", response_model=PaymentResponse)
 def update_payment(payment_id : int, pay : PaymentRequest):
     query = select(Payment).where(Payment.id == payment_id)
     payment = session.scalars(query).first()
